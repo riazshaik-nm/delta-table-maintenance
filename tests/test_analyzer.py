@@ -19,13 +19,14 @@ def test_health_score_many_small_files():
     h = TableHealth(
         table_name="test",
         table_path="/test",
-        total_files=1000,
-        small_file_count=600,
+        total_files=1500,
+        small_file_count=900,
         small_file_pct=60.0,
         needs_optimize=True,
         needs_vacuum=False,
     )
-    assert h.health_score <= 50
+    # -40 (>50% small) -15 (>1000 files & >30% small) = 45
+    assert h.health_score == 45
     assert h.is_healthy is False
 
 
