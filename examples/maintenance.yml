@@ -1,0 +1,46 @@
+# Delta Table Maintenance Configuration
+# =======================================
+# This YAML file defines which tables to maintain and how.
+# Use with: MaintenanceConfig.from_yaml("maintenance.yml")
+
+dry_run: false
+default_vacuum_retention_hours: 168  # 7 days
+
+tables:
+  # Fact table — high volume, needs frequent optimization
+  - path: /mnt/delta/fact_orders
+    name: fact_orders
+    optimize: true
+    vacuum: true
+    vacuum_retention_hours: 168
+    zorder_columns:
+      - order_date
+      - customer_id
+    target_file_size_mb: 128
+    schedule: daily
+
+  # Dimension table — less frequent updates
+  - path: /mnt/delta/dim_customers
+    name: dim_customers
+    optimize: true
+    vacuum: true
+    vacuum_retention_hours: 720  # 30 days (more time travel)
+    zorder_columns:
+      - customer_id
+      - region
+    schedule: weekly
+
+  # Staging table — aggressive cleanup
+  - path: /mnt/delta/stg_events
+    name: stg_events
+    optimize: true
+    vacuum: true
+    vacuum_retention_hours: 24  # 1 day only
+    zorder_columns: []
+    target_file_size_mb: 64
+    schedule: daily
+
+  # Archive table — maintenance disabled
+  - path: /mnt/delta/archive_logs
+    name: archive_logs
+    enabled: false
