@@ -8,7 +8,7 @@ from rich.table import Table
 from rich.text import Text
 
 from delta_maintenance.analyzer import TableHealth
-from delta_maintenance.runner import MaintenanceReport, TableMaintenanceResult
+from delta_maintenance.runner import MaintenanceReport
 
 
 def print_health_report(health_list: list[TableHealth], title: str = "Delta Table Health") -> None:

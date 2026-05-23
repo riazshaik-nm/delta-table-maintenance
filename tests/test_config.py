@@ -1,7 +1,4 @@
 import tempfile
-from pathlib import Path
-
-import pytest
 
 from delta_maintenance.config import MaintenanceConfig, TableConfig
 

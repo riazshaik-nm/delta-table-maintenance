@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+import pyspark.sql.functions as fn
 from delta.tables import DeltaTable
 from pyspark.sql import SparkSession
-import pyspark.sql.functions as F
 
 from delta_maintenance.config import TableConfig
 
@@ -111,31 +111,37 @@ class TableAnalyzer:
                 table_path=table_config.path,
             )
 
-        dt = DeltaTable.forPath(self._spark, table_config.path)
-        detail = self._spark.sql(f"DESCRIBE DETAIL delta.`{table_config.path}`").collect()[0]
+        detail = self._spark.sql(
+            f"DESCRIBE DETAIL delta.`{table_config.path}`"
+        ).collect()[0]
 
         version = detail.version if hasattr(detail, "version") else 0
         num_files = detail.numFiles if hasattr(detail, "numFiles") else 0
         size_bytes = detail.sizeInBytes if hasattr(detail, "sizeInBytes") else 0
-        partitions = len(detail.partitionColumns) if hasattr(detail, "partitionColumns") else 0
+        partitions = (
+            len(detail.partitionColumns)
+            if hasattr(detail, "partitionColumns")
+            else 0
+        )
 
         total_size_mb = size_bytes / (1024 * 1024)
         avg_size_mb = total_size_mb / max(num_files, 1)
-
-        # Analyze file sizes from the Delta log
-        add_files = (
-            self._spark.read.format("delta")
-            .load(table_config.path)
-        )
 
         file_stats = self._get_file_stats(table_config.path)
 
         small_file_count = file_stats.get("small_count", 0)
         small_pct = (small_file_count / max(num_files, 1)) * 100
 
-        needs_opt = small_pct > 20 or (num_files > 100 and avg_size_mb < table_config.target_file_size_mb * 0.5)
+        target_half = table_config.target_file_size_mb * 0.5
+        needs_opt = small_pct > 20 or (
+            num_files > 100 and avg_size_mb < target_half
+        )
 
-        last_mod = detail.lastModified if hasattr(detail, "lastModified") else None
+        last_mod = (
+            detail.lastModified
+            if hasattr(detail, "lastModified")
+            else None
+        )
 
         return TableHealth(
             table_name=table_config.name,
@@ -162,14 +168,14 @@ class TableAnalyzer:
                 adds = log_df.select("add.size").filter("add IS NOT NULL")
                 if adds.count() > 0:
                     stats = adds.agg(
-                        F.min("size").alias("min_size"),
-                        F.max("size").alias("max_size"),
+                        fn.min("size").alias("min_size"),
+                        fn.max("size").alias("max_size"),
                     ).collect()[0]
                     return {
                         "min_mb": (stats.min_size or 0) / (1024 * 1024),
                         "max_mb": (stats.max_size or 0) / (1024 * 1024),
                         "small_count": adds.filter(
-                            F.col("size") < 10 * 1024 * 1024
+                            fn.col("size") < 10 * 1024 * 1024
                         ).count(),
                     }
         except Exception:
