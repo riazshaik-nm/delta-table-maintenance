@@ -3,39 +3,11 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
 
 from pyspark.sql import SparkSession
 
 from delta_maintenance.config import TableConfig
-
-
-@dataclass(frozen=True)
-class VacuumResult:
-    """Result of a VACUUM operation.
-
-    Attributes
-    ----------
-    table_name : str
-        Name of the vacuumed table.
-    retention_hours : int
-        Retention period used.
-    files_deleted : int
-        Number of stale files removed.
-    space_freed_mb : float
-        Approximate space freed in MB.
-    duration_seconds : float
-        Wall clock time for the operation.
-    skipped : bool
-        True if the operation was skipped (dry run).
-    """
-
-    table_name: str
-    retention_hours: int = 168
-    files_deleted: int = 0
-    space_freed_mb: float = 0.0
-    duration_seconds: float = 0.0
-    skipped: bool = False
+from delta_maintenance.models import VacuumResult
 
 
 def run_vacuum(
@@ -47,8 +19,7 @@ def run_vacuum(
     """Run VACUUM on a Delta table.
 
     Removes data files no longer referenced by the Delta log that are
-    older than the retention period. This frees up storage but makes
-    time-travel to older versions impossible for the cleaned-up commits.
+    older than the retention period.
 
     Parameters
     ----------
@@ -57,7 +28,7 @@ def run_vacuum(
     table_config : TableConfig
         Configuration for the table to vacuum.
     retention_hours : int, optional
-        Override retention period. Defaults to table_config.vacuum_retention_hours.
+        Override retention period.
     dry_run : bool
         If True, report what would be deleted without executing.
 
@@ -65,17 +36,13 @@ def run_vacuum(
     -------
     VacuumResult
         Metrics from the vacuum operation.
-
-    Examples
-    --------
-    >>> result = run_vacuum(spark, table_config, retention_hours=72)
-    >>> print(f"Freed {result.space_freed_mb:.1f} MB ({result.files_deleted} files)")
     """
     hours = retention_hours or table_config.vacuum_retention_hours
 
     if dry_run:
         dry_result = spark.sql(
-            f"VACUUM delta.`{table_config.path}` RETAIN {hours} HOURS DRY RUN"
+            f"VACUUM delta.`{table_config.path}` "
+            f"RETAIN {hours} HOURS DRY RUN"
         )
         count = dry_result.count()
         return VacuumResult(
@@ -89,9 +56,15 @@ def run_vacuum(
 
     start = time.time()
 
-    spark.conf.set("spark.databricks.delta.retentionDurationCheck.enabled", "false")
-    spark.sql(f"VACUUM delta.`{table_config.path}` RETAIN {hours} HOURS")
-    spark.conf.set("spark.databricks.delta.retentionDurationCheck.enabled", "true")
+    spark.conf.set(
+        "spark.databricks.delta.retentionDurationCheck.enabled", "false"
+    )
+    spark.sql(
+        f"VACUUM delta.`{table_config.path}` RETAIN {hours} HOURS"
+    )
+    spark.conf.set(
+        "spark.databricks.delta.retentionDurationCheck.enabled", "true"
+    )
 
     elapsed = time.time() - start
     size_after = _get_table_size_mb(spark, table_config.path)
@@ -108,5 +81,7 @@ def run_vacuum(
 def _get_table_size_mb(spark: SparkSession, path: str) -> float:
     """Get current table size in MB from DESCRIBE DETAIL."""
     detail = spark.sql(f"DESCRIBE DETAIL delta.`{path}`").collect()[0]
-    size_bytes = detail.sizeInBytes if hasattr(detail, "sizeInBytes") else 0
+    size_bytes = (
+        detail.sizeInBytes if hasattr(detail, "sizeInBytes") else 0
+    )
     return size_bytes / (1024 * 1024)

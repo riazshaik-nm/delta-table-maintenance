@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from delta_maintenance.runner import (
+from delta_maintenance.models import (
     MaintenanceReport,
     TableMaintenanceResult,
 )

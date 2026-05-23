@@ -3,12 +3,25 @@
 from __future__ import annotations
 
 from delta_maintenance.config import MaintenanceConfig, TableConfig
+from delta_maintenance.models import (
+    MaintenanceReport,
+    OptimizeResult,
+    TableHealth,
+    TableMaintenanceResult,
+    VacuumResult,
+    ZOrderResult,
+)
 
 __all__ = [
     "MaintenanceConfig",
     "TableConfig",
-    "TableAnalyzer",
     "TableHealth",
+    "OptimizeResult",
+    "VacuumResult",
+    "ZOrderResult",
+    "TableMaintenanceResult",
+    "MaintenanceReport",
+    "TableAnalyzer",
     "run_optimize",
     "run_vacuum",
     "run_zorder",
@@ -24,10 +37,6 @@ def __getattr__(name: str) -> object:
         from delta_maintenance.analyzer import TableAnalyzer
 
         return TableAnalyzer
-    if name == "TableHealth":
-        from delta_maintenance.analyzer import TableHealth
-
-        return TableHealth
     if name == "run_optimize":
         from delta_maintenance.optimizer import run_optimize
 

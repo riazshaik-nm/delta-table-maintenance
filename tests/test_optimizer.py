@@ -1,4 +1,4 @@
-from delta_maintenance.optimizer import OptimizeResult
+from delta_maintenance.models import OptimizeResult
 
 
 def test_optimize_result_files_compacted():

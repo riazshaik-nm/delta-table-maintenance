@@ -7,11 +7,13 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from delta_maintenance.analyzer import TableHealth
-from delta_maintenance.runner import MaintenanceReport
+from delta_maintenance.models import MaintenanceReport, TableHealth
 
 
-def print_health_report(health_list: list[TableHealth], title: str = "Delta Table Health") -> None:
+def print_health_report(
+    health_list: list[TableHealth],
+    title: str = "Delta Table Health",
+) -> None:
     """Print a health summary for multiple Delta tables."""
     console = Console()
 
@@ -53,7 +55,6 @@ def print_maintenance_report(report: MaintenanceReport) -> None:
     """Print a maintenance run report."""
     console = Console()
 
-    # Summary panel
     summary = Table.grid(padding=(0, 2))
     summary.add_column(style="bold cyan", justify="right")
     summary.add_column()
@@ -62,9 +63,10 @@ def print_maintenance_report(report: MaintenanceReport) -> None:
     summary.add_row("Failed", f"[red]{report.tables_failed}[/red]")
     summary.add_row("Duration", f"{report.total_duration_seconds:.1f}s")
 
-    console.print(Panel(summary, title="Maintenance Run Summary", border_style="green"))
+    console.print(
+        Panel(summary, title="Maintenance Run Summary", border_style="green")
+    )
 
-    # Per-table details
     table = Table(title="Table Details", show_lines=True)
     table.add_column("Table", style="cyan")
     table.add_column("OPTIMIZE", justify="center")
@@ -78,16 +80,20 @@ def print_maintenance_report(report: MaintenanceReport) -> None:
             if r.optimize_result.skipped:
                 opt_status = "[dim]dry run[/dim]"
             else:
-                opt_status = f"[green]{r.optimize_result.files_compacted} compacted[/green]"
+                compacted = r.optimize_result.files_compacted
+                opt_status = f"[green]{compacted} compacted[/green]"
 
         vac_status = "-"
         if r.vacuum_result:
             if r.vacuum_result.skipped:
                 vac_status = "[dim]dry run[/dim]"
             else:
-                vac_status = f"[green]{r.vacuum_result.space_freed_mb:.1f} MB freed[/green]"
+                freed = r.vacuum_result.space_freed_mb
+                vac_status = f"[green]{freed:.1f} MB freed[/green]"
 
-        status = "[green]OK[/green]" if r.success else f"[red]{r.error}[/red]"
+        status = (
+            "[green]OK[/green]" if r.success else f"[red]{r.error}[/red]"
+        )
 
         table.add_row(
             r.table_name,

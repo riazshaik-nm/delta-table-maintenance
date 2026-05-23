@@ -1,4 +1,4 @@
-from delta_maintenance.analyzer import TableHealth
+from delta_maintenance.models import TableHealth
 
 
 def test_health_score_perfect():
@@ -39,7 +39,7 @@ def test_health_score_needs_vacuum():
         needs_optimize=False,
         needs_vacuum=True,
     )
-    assert h.health_score == 85  # -15 for vacuum
+    assert h.health_score == 85
 
 
 def test_health_score_moderate_small_files():
@@ -52,4 +52,4 @@ def test_health_score_moderate_small_files():
         needs_optimize=True,
         needs_vacuum=True,
     )
-    assert h.health_score == 65  # -20 for small files, -15 for vacuum
+    assert h.health_score == 65
